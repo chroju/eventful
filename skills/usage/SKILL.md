@@ -15,6 +15,9 @@ Options:
 - `--sound` — play the default sound (silent by default).
 - `--id <GROUP>` — re-sending with the same id replaces the previous
   notification instead of stacking a new one. Use for progress updates.
+- `--image <PATH>` — attach an image (png/jpg/gif, up to 10MB): a thumbnail
+  on the banner, full size when expanded. Useful for attaching a generated
+  chart or screenshot. The file is copied, so the original is left in place.
 - `--activate <BUNDLE_ID>` — clicking the notification activates the app
   (e.g. `com.mitchellh.ghostty`).
 - `--open <URL>` — clicking opens the URL.

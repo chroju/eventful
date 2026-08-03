@@ -9,6 +9,7 @@ struct CLITests {
         #expect(send.body == nil)
         #expect(send.sound == false)
         #expect(send.id == nil)
+        #expect(send.image == nil)
         #expect(send.timeout == 30)
     }
 
@@ -17,7 +18,7 @@ struct CLITests {
             "--title", "t", "--body", "b", "--subtitle", "s", "--sound",
             "--id", "g", "--activate", "com.example.app",
             "--open", "https://example.com", "--execute", "/usr/bin/true",
-            "--timeout", "5",
+            "--timeout", "5", "--image", "/tmp/shot.png",
         ])
         #expect(send.body == "b")
         #expect(send.subtitle == "s")
@@ -27,6 +28,7 @@ struct CLITests {
         #expect(send.open == "https://example.com")
         #expect(send.execute == "/usr/bin/true")
         #expect(send.timeout == 5)
+        #expect(send.image == "/tmp/shot.png")
     }
 
     @Test func removeRequiresGroupIDOrAll() {

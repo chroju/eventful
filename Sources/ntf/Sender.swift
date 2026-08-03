@@ -39,7 +39,7 @@ enum Sender {
     static func send(
         title: String, body: String?, subtitle: String?, sound: Bool,
         id: String?, activate: String?, open: String?, execute: String?,
-        timeoutSec: Int
+        timeoutSec: Int, image: String? = nil
     ) throws {
         try ensureBundle()
 
@@ -61,6 +61,9 @@ enum Sender {
         if let body { content.body = body }
         if let subtitle { content.subtitle = subtitle }
         if sound { content.sound = .default }
+        if let image {
+            content.attachments = [try Attachment.makeImage(path: image)]
+        }
 
         if activate != nil || open != nil || execute != nil {
             let action = SpoolAction(
