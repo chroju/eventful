@@ -12,7 +12,10 @@ let package = Package(
         .macOS("14")
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0")
+        // Exact pin, not a range: eventful is an application (not consumed
+        // as a package), so reproducibility wins over auto-drift. Dependabot
+        // handles freshness.
+        .package(url: "https://github.com/apple/swift-argument-parser.git", exact: "1.8.2")
     ],
     targets: [
         .executableTarget(
