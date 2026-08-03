@@ -3,8 +3,13 @@ import PackageDescription
 
 let package = Package(
     name: "eventful",
+    // Deployment target kept low deliberately: this is a compile/lint floor
+    // for CI (whose SDK lags the developer's own macOS), not a compatibility
+    // promise. The actual minimum OS is enforced at runtime via
+    // Info.plist's LSMinimumSystemVersion, which build.sh stamps with the
+    // host's real macOS version.
     platforms: [
-        .macOS("26.0")
+        .macOS("14")
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0")
