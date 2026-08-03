@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: swift build
-      # DEBUG: successfulCommand passed. Next isolate: stderr pipe reading
-      # (stderrTailIsLastLine) without any timeout-kill path.
-      - run: swift test --verbose --filter 'stderrTailIsLastLine'
+      # DEBUG: successfulCommand and stderrTailIsLastLine both passed. Only
+      # remaining candidate: timeoutKillsProcess (terminate()/SIGKILL path).
+      - run: swift test --verbose --filter 'timeoutKillsProcess'
         timeout-minutes: 2
