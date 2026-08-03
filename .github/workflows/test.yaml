@@ -11,8 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: swift build
-      # DEBUG: narrowing down a hang. CLITests and SpoolTests don't spawn a
-      # Process; RunnerTests does. If this step passes but the full suite
-      # hangs, the hang is in Process/waitUntilExit under the CI sandbox.
-      - run: swift test --verbose --filter 'CLITests|SpoolTests'
-        timeout-minutes: 3
+      # DEBUG: CLITests/SpoolTests (no Process) passed instantly. Narrowing
+      # further within RunnerTests: successfulCommand is the simplest
+      # Process-spawning test (no pipe reads beyond EOF, no timeout kill).
+      - run: swift test --verbose --filter 'successfulCommand'
+        timeout-minutes: 2
