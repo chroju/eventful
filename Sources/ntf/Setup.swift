@@ -1,6 +1,24 @@
 import Foundation
 import UserNotifications
 
+/// While setup waits for the test-notification click, its own process holds
+/// a live connection to the notification service — and the OS delivers the
+/// click response to it instead of relaunching the app. Handle it in place;
+/// unlike ClickDelegate, never exit (setup owns the process lifecycle).
+private final class SetupDelegate: NSObject, UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completion: @escaping () -> Void
+    ) {
+        Log.write("setup: received response action=\(response.actionIdentifier)")
+        _ = ResponseHandler.process(response)
+        completion()
+    }
+}
+
+private let setupDelegate = SetupDelegate()
+
 /// `ntf setup`: idempotent, interactive first-run flow.
 /// Assumes the binary already runs from inside a built Eventful.app
 /// (building/signing is scripts/build.sh's job). Requests notification
@@ -67,7 +85,9 @@ enum Setup {
         }
 
         // 4. Test notification: click runs touch on a marker file, proving the
-        //    whole click → spool → Runner path works.
+        //    whole click → spool → Runner path works. The delegate must be in
+        //    place before posting: responses land in this process while it lives.
+        UNUserNotificationCenter.current().delegate = setupDelegate
         let marker = NSTemporaryDirectory() + "eventful-click-ok"
         try? FileManager.default.removeItem(atPath: marker)
         try Sender.send(

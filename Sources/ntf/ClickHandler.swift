@@ -6,6 +6,51 @@ import UserNotifications
 /// Eventful.app with no arguments and delivers didReceive(response).
 /// The delegate must be set before NSApp.run(), as early as possible —
 /// a late delegate misses the response entirely.
+/// Shared response handling: resolve the spool ref and run the actions.
+/// Used by both click mode and setup (whose still-running process receives
+/// the response instead of a freshly launched instance).
+enum ResponseHandler {
+    /// Returns false when any action failed; stale/ref-less responses are
+    /// treated as success (silently ignored).
+    static func process(_ response: UNNotificationResponse) -> Bool {
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else {
+            Log.write("click: non-default action, ignoring")
+            return true
+        }
+
+        let userInfo = response.notification.request.content.userInfo
+        guard let ref = userInfo["ref"] as? String else {
+            Log.write("click: no ref in userInfo (action-less notification)")
+            return true
+        }
+        guard let action = Spool.resolve(ref: ref) else {
+            // Stale-click protection: missing or expired → silently do nothing.
+            Log.write("click: spool miss/expired: \(ref)")
+            return true
+        }
+        Spool.delete(ref: ref)
+
+        var ok = true
+        if let bundleID = action.activate {
+            ok = Activator.activate(bundleID: bundleID) && ok
+        }
+        if let urlString = action.open {
+            if let url = URL(string: urlString) {
+                Log.write("click: open \(urlString)")
+                ok = NSWorkspace.shared.open(url) && ok
+            } else {
+                Log.write("click: invalid open URL: \(urlString)")
+                ok = false
+            }
+        }
+        if let exec = action.execute {
+            ok = Runner.run(cmd: exec.cmd, cwd: exec.cwd, timeoutSec: action.timeoutSec) && ok
+        }
+        Log.write("click: done ok=\(ok)")
+        return ok
+    }
+}
+
 final class ClickDelegate: NSObject, UNUserNotificationCenterDelegate {
     /// Exiting inside didReceive loses responses: rapid clicks on several
     /// notifications get delivered to the already-running instance, so the
@@ -50,42 +95,7 @@ final class ClickDelegate: NSObject, UNUserNotificationCenterDelegate {
                 completion()
                 scheduleExit(after: 3)
             }
-
-            guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else {
-                Log.write("click: non-default action, ignoring")
-                return
-            }
-
-            let userInfo = response.notification.request.content.userInfo
-            guard let ref = userInfo["ref"] as? String else {
-                Log.write("click: no ref in userInfo (action-less notification)")
-                return
-            }
-            guard let action = Spool.resolve(ref: ref) else {
-                // Stale-click protection: missing or expired → silently do nothing.
-                Log.write("click: spool miss/expired: \(ref)")
-                return
-            }
-            Spool.delete(ref: ref)
-
-            var ok = true
-            if let bundleID = action.activate {
-                ok = Activator.activate(bundleID: bundleID) && ok
-            }
-            if let urlString = action.open {
-                if let url = URL(string: urlString) {
-                    Log.write("click: open \(urlString)")
-                    ok = NSWorkspace.shared.open(url) && ok
-                } else {
-                    Log.write("click: invalid open URL: \(urlString)")
-                    ok = false
-                }
-            }
-            if let exec = action.execute {
-                ok = Runner.run(cmd: exec.cmd, cwd: exec.cwd, timeoutSec: action.timeoutSec) && ok
-            }
-            Log.write("click: done ok=\(ok)")
-            if !ok { exitCode = 1 }
+            if !ResponseHandler.process(response) { exitCode = 1 }
         }
     }
 }
