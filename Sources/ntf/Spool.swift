@@ -35,7 +35,8 @@ struct SpoolAction: Codable {
 enum Spool {
     static let defaultTTLSec = 86_400
 
-    static let dir = FileManager.default.homeDirectoryForCurrentUser
+    /// var, not let: tests point this at a temporary directory.
+    static var dir = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Application Support/eventful/spool", isDirectory: true)
 
     private static func fileURL(ref: String) -> URL {

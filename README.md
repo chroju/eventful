@@ -83,6 +83,17 @@ lives in `~/Library/Application Support/eventful/spool/<uuid>.json`
 (directory 0700, files 0600) with a 24h TTL. A click on a stale notification
 whose spool entry is missing or expired silently does nothing.
 
+## Development
+
+```console
+$ scripts/test.sh    # swift test (with Command Line Tools workarounds)
+```
+
+Unit tests cover the spool (persistence, TTL, GC, permissions), the runner
+(exit codes, stderr capture, timeout kill, cwd handling), and CLI parsing.
+The notification-facing paths (post, click delivery) require a signed app
+bundle and a human click, so they are verified with `ntf setup` instead.
+
 ## Troubleshooting
 
 Click-mode processes have no tty; everything is logged to
