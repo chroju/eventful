@@ -7,49 +7,86 @@ import UserNotifications
 /// The delegate must be set before NSApp.run(), as early as possible —
 /// a late delegate misses the response entirely.
 final class ClickDelegate: NSObject, UNUserNotificationCenterDelegate {
+    /// Exiting inside didReceive loses responses: rapid clicks on several
+    /// notifications get delivered to the already-running instance, so the
+    /// process must linger a bit after each one instead of exiting
+    /// immediately (verified: an immediate exit dropped the second of three
+    /// quick clicks).
+    private var exitWork: DispatchWorkItem?
+    private var exitCode: Int32 = 0
+
+    func scheduleExit(after seconds: TimeInterval) {
+        exitWork?.cancel()
+        let work = DispatchWorkItem { [self] in
+            Log.write("click: idle, exiting \(exitCode)")
+            exit(exitCode)
+        }
+        exitWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
+    }
+
+    /// If nothing arrives shortly after launch, assume a human simply typed
+    /// `ntf` and bail out. Cancelled by the first response.
+    func scheduleInitialTimeout(seconds: TimeInterval) {
+        let work = DispatchWorkItem {
+            Log.write("click: no response within \(Int(seconds))s, exiting")
+            FileHandle.standardError.write(
+                Data("eventful: no notification response. Try `ntf --help`\n".utf8))
+            exit(64)
+        }
+        exitWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
+    }
+
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completion: @escaping () -> Void
     ) {
-        defer { completion() }
+        exitWork?.cancel()  // keep the pending exit from firing mid-handling
         Log.write("click: received response action=\(response.actionIdentifier)")
-
-        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else {
-            Log.write("click: non-default action, ignoring")
-            exit(0)
-        }
-
-        let userInfo = response.notification.request.content.userInfo
-        guard let ref = userInfo["ref"] as? String else {
-            Log.write("click: no ref in userInfo (action-less notification)")
-            exit(0)
-        }
-        guard let action = Spool.resolve(ref: ref) else {
-            // Stale-click protection: missing or expired → silently do nothing.
-            Log.write("click: spool miss/expired: \(ref)")
-            exit(0)
-        }
-        Spool.delete(ref: ref)
-
-        var ok = true
-        if let bundleID = action.activate {
-            ok = Activator.activate(bundleID: bundleID) && ok
-        }
-        if let urlString = action.open {
-            if let url = URL(string: urlString) {
-                Log.write("click: open \(urlString)")
-                ok = NSWorkspace.shared.open(url) && ok
-            } else {
-                Log.write("click: invalid open URL: \(urlString)")
-                ok = false
+        DispatchQueue.main.async { [self] in
+            defer {
+                completion()
+                scheduleExit(after: 3)
             }
+
+            guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else {
+                Log.write("click: non-default action, ignoring")
+                return
+            }
+
+            let userInfo = response.notification.request.content.userInfo
+            guard let ref = userInfo["ref"] as? String else {
+                Log.write("click: no ref in userInfo (action-less notification)")
+                return
+            }
+            guard let action = Spool.resolve(ref: ref) else {
+                // Stale-click protection: missing or expired → silently do nothing.
+                Log.write("click: spool miss/expired: \(ref)")
+                return
+            }
+            Spool.delete(ref: ref)
+
+            var ok = true
+            if let bundleID = action.activate {
+                ok = Activator.activate(bundleID: bundleID) && ok
+            }
+            if let urlString = action.open {
+                if let url = URL(string: urlString) {
+                    Log.write("click: open \(urlString)")
+                    ok = NSWorkspace.shared.open(url) && ok
+                } else {
+                    Log.write("click: invalid open URL: \(urlString)")
+                    ok = false
+                }
+            }
+            if let exec = action.execute {
+                ok = Runner.run(cmd: exec.cmd, cwd: exec.cwd, timeoutSec: action.timeoutSec) && ok
+            }
+            Log.write("click: done ok=\(ok)")
+            if !ok { exitCode = 1 }
         }
-        if let exec = action.execute {
-            ok = Runner.run(cmd: exec.cmd, cwd: exec.cwd, timeoutSec: action.timeoutSec) && ok
-        }
-        Log.write("click: done ok=\(ok)")
-        exit(ok ? 0 : 1)
     }
 }
 
@@ -99,13 +136,7 @@ func runClickMode() -> Never {
     UNUserNotificationCenter.current().delegate = clickDelegate  // before NSApp.run()
 
     let app = NSApplication.shared
-    // If nothing arrives within 5s, assume a human simply typed `ntf`.
-    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-        Log.write("click: no response within 5s, exiting")
-        FileHandle.standardError.write(
-            Data("eventful: no notification response. Try `ntf --help`\n".utf8))
-        exit(64)
-    }
+    clickDelegate.scheduleInitialTimeout(seconds: 5)
     app.run()
     exit(0)
 }
