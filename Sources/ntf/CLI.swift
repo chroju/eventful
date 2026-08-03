@@ -29,6 +29,13 @@ struct Send: ParsableCommand {
     @Option(help: "Group id. Re-sending with the same id replaces the existing notification.")
     var id: String?
 
+    @Option(help: """
+        Path to an image (png/jpg/gif, up to 10MB) to attach: a thumbnail on \
+        the banner, full size when expanded. The file is copied, so the \
+        original is left untouched.
+        """)
+    var image: String?
+
     @Option(help: "Bundle id of an app to activate on click.")
     var activate: String?
 
@@ -49,7 +56,7 @@ struct Send: ParsableCommand {
         try Sender.send(
             title: title, body: body, subtitle: subtitle, sound: sound,
             id: id, activate: activate, open: open, execute: execute,
-            timeoutSec: timeout)
+            timeoutSec: timeout, image: image)
     }
 }
 

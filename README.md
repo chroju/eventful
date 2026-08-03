@@ -47,6 +47,7 @@ Keychain Access.app (Certificate Assistant > Create a Certificate..., name
 ntf send --title <T> [--body <B>] [--subtitle <S>]
          [--sound]                # silent by default; flag enables default sound
          [--id <GROUP>]           # same id replaces the existing notification
+         [--image <PATH>]         # attach an image (png/jpg/gif, up to 10MB)
          [--activate <BUNDLE_ID>] # click: activate an app
          [--open <URL>]           # click: open a URL
          [--execute <CMD>]        # click: run a command (see contract below)
@@ -58,6 +59,14 @@ ntf doctor                        # diagnostics
 ```
 
 activate / open / execute can be combined; they run in that order.
+
+### `--image`
+
+Shown as a thumbnail on the banner and full size when the notification is
+expanded. png / jpg / gif only, up to 10MB; local paths only.
+
+The framework moves an attached file into its own store rather than copying
+it, so `ntf` attaches a temporary copy — the file you pass is left untouched.
 
 ### The `--execute` contract
 
