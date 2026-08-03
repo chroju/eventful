@@ -1,4 +1,7 @@
-# eventful
+<h1>
+  <img src="icon/png/icon_128x128.png" alt="" width="32" height="32" align="top">
+  eventful
+</h1>
 
 A notification CLI for macOS built on the UserNotifications framework, whose
 core feature is running a command on notification click **without losing the
