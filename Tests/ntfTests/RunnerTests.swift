@@ -6,6 +6,13 @@ import Testing
 // Only Runner.execute is exercised here: Runner.run posts notifications via
 // UserNotifications, which crashes outside an app bundle (i.e. in the test
 // runner).
+//
+// .serialized: concurrent Process spawns from swift-testing's default
+// parallelism hang indefinitely on GitHub Actions macOS runners (confirmed:
+// every test here passes in well under a second individually or with
+// --no-parallel, but the suite alone hangs for 5+ minutes under default
+// parallel execution). Not reproducible locally; runner-sandbox-specific.
+@Suite(.serialized)
 struct RunnerTests {
     private func makeTempCwd() throws -> URL {
         let dir = FileManager.default.temporaryDirectory

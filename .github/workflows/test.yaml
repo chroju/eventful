@@ -11,8 +11,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: swift build
-      # DEBUG: every RunnerTests test passes individually. Try the whole
-      # suite serially (--no-parallel): if this hangs too, the hang is
-      # concurrent-Process-related, not a single test's logic.
-      - run: swift test --verbose --filter 'RunnerTests' --no-parallel
-        timeout-minutes: 2
+      - run: swift test
+        timeout-minutes: 5
