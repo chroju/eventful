@@ -11,8 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: swift build
-      # DEBUG: CLITests/SpoolTests (no Process) passed instantly. Narrowing
-      # further within RunnerTests: successfulCommand is the simplest
-      # Process-spawning test (no pipe reads beyond EOF, no timeout kill).
-      - run: swift test --verbose --filter 'successfulCommand'
+      # DEBUG: successfulCommand passed. Next isolate: stderr pipe reading
+      # (stderrTailIsLastLine) without any timeout-kill path.
+      - run: swift test --verbose --filter 'stderrTailIsLastLine'
         timeout-minutes: 2
