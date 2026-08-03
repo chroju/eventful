@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import UserNotifications
 
@@ -102,19 +103,27 @@ enum Setup {
             timeoutSec: 30)
         print("[4/4] test notification posted. Click it within 60 seconds...")
 
+        // Wait by pumping the main run loop via NSApplication, exactly like
+        // click mode: the click response is delivered to THIS process (it
+        // holds the live notification-service connection), and delegate
+        // callbacks never fire while the main thread sits in Thread.sleep.
         let deadline = Date().addingTimeInterval(60)
-        while Date() < deadline {
+        let timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
             if FileManager.default.fileExists(atPath: marker) {
                 try? FileManager.default.removeItem(atPath: marker)
                 print("")
                 print("OK: click path verified. Setup complete.")
-                return
+                exit(0)
             }
-            Thread.sleep(forTimeInterval: 0.5)
+            if Date() >= deadline {
+                print("")
+                print("NOTE: the notification was not clicked within 60s.")
+                print("You can still verify later: click it and check that")
+                print("\(marker) appears (see also \(Log.file.path)).")
+                exit(0)
+            }
         }
-        print("")
-        print("NOTE: the notification was not clicked within 60s.")
-        print("You can still verify later: click it and check that")
-        print("\(marker) appears (see also \(Log.file.path)).")
+        RunLoop.main.add(timer, forMode: .common)
+        NSApplication.shared.run()
     }
 }
