@@ -25,8 +25,12 @@ basicConstraints = critical, CA:false
 EOF
 openssl req -x509 -newkey rsa:2048 -keyout "$TMP/key.pem" -out "$TMP/cert.pem" \
   -days 3650 -nodes -subj "/CN=$CN" -extensions v3 -config "$TMP/ext.cnf"
+# OpenSSL 3 defaults to AES/PBKDF2/SHA-256-MAC for PKCS12, which the macOS
+# keychain cannot parse ("MAC verification failed during PKCS12 import").
+# Force the legacy SHA1/3DES format that `security import` understands.
 openssl pkcs12 -export -inkey "$TMP/key.pem" -in "$TMP/cert.pem" \
-  -out "$TMP/cert.p12" -passout pass:temp
+  -out "$TMP/cert.p12" -passout pass:temp \
+  -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1
 security import "$TMP/cert.p12" -k ~/Library/Keychains/login.keychain-db \
   -P temp -T /usr/bin/codesign
 # Trust for code signing (expect an administrator password prompt)
