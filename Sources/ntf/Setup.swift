@@ -25,8 +25,8 @@ enum Setup {
             print("      then scripts/build.sh again.")
         }
 
-        // 2. Signature summary
-        let sign = Doctor.shell("/usr/bin/codesign", ["-dv", Bundle.main.bundlePath])
+        // 2. Signature summary (-dvv: Authority= lines only appear at verbosity 2)
+        let sign = Doctor.shell("/usr/bin/codesign", ["-dvv", Bundle.main.bundlePath])
         let authority = sign.split(separator: "\n")
             .first { $0.hasPrefix("Authority=") } ?? "Authority=(ad-hoc or unsigned)"
         print("[2/4] signature: \(authority)")

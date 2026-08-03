@@ -33,6 +33,11 @@ openssl pkcs12 -export -inkey "$TMP/key.pem" -in "$TMP/cert.pem" \
   -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1
 security import "$TMP/cert.p12" -k ~/Library/Keychains/login.keychain-db \
   -P temp -T /usr/bin/codesign
+# Keys imported via `security import` lack the apple-tool: partition ID, so
+# codesign fails with errSecInternalComponent in non-interactive sessions.
+# This grants it; expect a prompt for your login keychain password.
+security set-key-partition-list -S apple-tool:,apple: \
+  ~/Library/Keychains/login.keychain-db >/dev/null
 # Trust for code signing (expect an administrator password prompt)
 sudo security add-trusted-cert -d -r trustRoot -p codeSign \
   -k /Library/Keychains/System.keychain "$TMP/cert.pem"

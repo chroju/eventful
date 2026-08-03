@@ -81,6 +81,11 @@ enum Activator {
     }
 }
 
+// UNUserNotificationCenter.delegate is weak; a function-local delegate gets
+// released by ARC right after the assignment (its last use), silently dropping
+// the response. Hold it in a global so it lives for the whole process.
+private let clickDelegate = ClickDelegate()
+
 func runClickMode() -> Never {
     // A bare-binary, argument-less invocation (e.g. a human typing `ntf`
     // outside the bundle) must not touch UN APIs — they would crash.
@@ -91,8 +96,7 @@ func runClickMode() -> Never {
     }
 
     Log.write("click: mode start")
-    let delegate = ClickDelegate()
-    UNUserNotificationCenter.current().delegate = delegate  // before NSApp.run()
+    UNUserNotificationCenter.current().delegate = clickDelegate  // before NSApp.run()
 
     let app = NSApplication.shared
     // If nothing arrives within 5s, assume a human simply typed `ntf`.

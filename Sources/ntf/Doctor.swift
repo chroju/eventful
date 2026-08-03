@@ -25,8 +25,9 @@ enum Doctor {
         // Code signature summary
         print("")
         print("codesign:")
+        // -dvv, not -dv: Authority= lines only appear at verbosity 2
         let target = inBundle ? Bundle.main.bundlePath : argv0
-        let sign = shell("/usr/bin/codesign", ["-dv", target])
+        let sign = shell("/usr/bin/codesign", ["-dvv", target])
         for line in sign.split(separator: "\n")
         where line.hasPrefix("Identifier=") || line.hasPrefix("Authority=")
             || line.hasPrefix("Signature=") || line.hasPrefix("TeamIdentifier=")
