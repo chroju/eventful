@@ -8,9 +8,14 @@ CERT_NAME="eventful-selfsigned"   # CN of the certificate created by make-cert.s
 
 swift build -c release
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/ntf "$APP/Contents/MacOS/ntf"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+
+# App icon. Built here rather than committed as a binary .icns so the iconset
+# stays the single source of truth. Must land before codesign, which seals
+# the bundle contents.
+iconutil -c icns icon/eventful.iconset -o "$APP/Contents/Resources/Eventful.icns"
 
 # Sign with the self-signed certificate if present, otherwise ad-hoc.
 # Ad-hoc signing changes binary identity on every rebuild, which can reset
