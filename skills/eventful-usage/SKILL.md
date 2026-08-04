@@ -1,6 +1,7 @@
 ---
 name: eventful-usage
 description: Send macOS notifications with the ntf CLI (eventful), including click actions that activate an app, open a URL, or run a command. Use when asked to notify the user on macOS or to alert when a long-running task finishes.
+license: MIT
 ---
 
 # Sending notifications with ntf

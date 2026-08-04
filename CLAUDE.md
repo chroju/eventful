@@ -183,6 +183,8 @@ printing when touching the click path.
 
 ## Skills
 
-`skills/setup/` and `skills/usage/` are user-facing Agent Skills shipped by this
-repo — the install/repair flow and the send-notification usage guide. Keep them
-in sync when CLI flags or the setup steps change.
+`skills/eventful-setup/` and `skills/eventful-usage/` are user-facing Agent
+Skills shipped by this repo — the install/repair flow and the send-notification
+usage guide. Keep them in sync when CLI flags or the setup steps change.
+Skill directory names must match the frontmatter `name`
+(`gh skill publish --dry-run` validates this).

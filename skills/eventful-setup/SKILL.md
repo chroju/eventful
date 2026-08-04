@@ -1,6 +1,7 @@
 ---
 name: eventful-setup
 description: Build and install the eventful notification CLI (ntf) from source on macOS. Use when asked to set up, build, install, or repair eventful/ntf, or when ntf reports it is not authorized or not running inside its bundle.
+license: MIT
 ---
 
 # Setting up eventful
