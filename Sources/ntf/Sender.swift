@@ -34,15 +34,9 @@ enum Sender {
         return result
     }
 
-    /// Regular send. Only checks the authorization status; never prompts.
-    /// Prompting is the responsibility of `ntf setup`.
-    static func send(
-        title: String, body: String?, subtitle: String?, sound: Bool,
-        id: String?, activate: String?, open: String?, execute: String?,
-        timeoutSec: Int, image: String? = nil
-    ) throws {
-        try ensureBundle()
-
+    /// Only checks the authorization status; never prompts. Prompting is the
+    /// responsibility of `ntf setup`.
+    static func ensureAuthorized() throws {
         switch currentSettings().authorizationStatus {
         case .authorized, .provisional:
             break
@@ -55,6 +49,16 @@ enum Sender {
         @unknown default:
             throw NtfError("unknown notification authorization status")
         }
+    }
+
+    /// Regular send.
+    static func send(
+        title: String, body: String?, subtitle: String?, sound: Bool,
+        id: String?, activate: String?, open: String?, execute: String?,
+        timeoutSec: Int, image: String? = nil
+    ) throws {
+        try ensureBundle()
+        try ensureAuthorized()
 
         let content = UNMutableNotificationContent()
         content.title = title

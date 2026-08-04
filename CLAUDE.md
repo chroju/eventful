@@ -97,6 +97,21 @@ change.
   effects; `Runner.run` wraps it with the failure notification. Tests only
   exercise `execute`, since `run` touches UserNotifications.
 
+### `ntf run` wrapper
+
+`Wrap.execute` is deliberately separate from `Runner.execute` despite both
+spawning processes — their requirements share nothing: run mode inherits stdio
+(the child owns the tty), has no timeout, and mirrors the exit code
+(128+signal for signal deaths); click mode captures stderr, kills on timeout,
+and has no tty. Do not merge them.
+
+The command is an argv array launched via `/usr/bin/env` (PATH lookup, no
+shell) — shell-isms require an explicit `sh -c '...'`. `--body` is
+intentionally absent from `run`: the body is always the generated status line.
+The bundle/authorization precheck runs *before* the wrapped command so a
+broken setup fails in seconds, not after a long build. `captureForPassthrough`
+keeps the `--` terminator itself in the captured array; `validate()` strips it.
+
 ### `--image` attachment
 
 `UNNotificationAttachment` **moves** the file into the system store instead of
@@ -150,14 +165,15 @@ lags the developer's macOS). The real minimum is `LSMinimumSystemVersion` in
 ## Testing scope
 
 Unit tests cover Spool (persistence, TTL, GC, permissions), Runner (exit codes,
-stderr tail, timeout kill, cwd), Attachment (staging copy, type/size/existence
+stderr tail, timeout kill, cwd), Wrap (exit code mirroring, signal mapping,
+duration, summary formatting), Attachment (staging copy, type/size/existence
 validation), and CLI parsing. Notification-facing paths
 (posting, click delivery) need a signed bundle and a human click, so they are
 verified with `ntf setup`, not tests.
 
-`RunnerTests` is `.serialized`: concurrent `Process` spawns hang indefinitely on
-GitHub Actions macOS runners under swift-testing's default parallelism (not
-reproducible locally).
+`RunnerTests` and `WrapTests` are `.serialized`: concurrent `Process` spawns
+hang indefinitely on GitHub Actions macOS runners under swift-testing's default
+parallelism (not reproducible locally).
 
 ## Debugging
 
