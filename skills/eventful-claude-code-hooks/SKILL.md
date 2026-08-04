@@ -1,6 +1,7 @@
 ---
 name: eventful-claude-code-hooks
-description: Wire Claude Code hooks to native macOS notifications via the ntf CLI, so the user is notified when Claude Code needs approval/input or finishes responding. Use when asked to set up Claude Code notifications, or to be alerted when an agent is waiting.
+description: Wires Claude Code hooks to native macOS notifications via the ntf CLI, notifying the user when Claude Code needs approval/input or finishes responding. Use when the user asks to set up Claude Code notifications, or to be alerted when an agent is waiting.
+license: MIT
 ---
 
 # Claude Code notifications via ntf
@@ -55,7 +56,8 @@ instead of stacking.
            "hooks": [
              {
                "type": "command",
-               "command": "p=$(cat); <NTF> send --title 'Claude Code' --subtitle \"$(basename \"$(printf %s \"$p\" | jq -r '.cwd // \"-\"')\")\" --body \"$(printf %s \"$p\" | jq -r '.message // \"Waiting for input\"')\" --id \"claude-$(printf %s \"$p\" | jq -r .session_id)\" --sound --activate <BUNDLE_ID> || true"
+               "command": "p=$(cat); <NTF> send --title 'Claude Code' --subtitle \"$(basename \"$(printf %s \"$p\" | jq -r '.cwd // \"-\"')\")\" --body \"$(printf %s \"$p\" | jq -r '.message // \"Waiting for input\"')\" --id \"claude-$(printf %s \"$p\" | jq -r .session_id)\" --sound --activate <BUNDLE_ID> >/dev/null 2>&1; exit 0",
+               "timeout": 10
              }
            ]
          }
@@ -65,7 +67,8 @@ instead of stacking.
            "hooks": [
              {
                "type": "command",
-               "command": "p=$(cat); <NTF> send --title 'Claude Code' --subtitle \"$(basename \"$(printf %s \"$p\" | jq -r '.cwd // \"-\"')\")\" --body 'Finished' --id \"claude-$(printf %s \"$p\" | jq -r .session_id)\" --sound --activate <BUNDLE_ID> || true"
+               "command": "p=$(cat); <NTF> send --title 'Claude Code' --subtitle \"$(basename \"$(printf %s \"$p\" | jq -r '.cwd // \"-\"')\")\" --body 'Finished' --id \"claude-$(printf %s \"$p\" | jq -r .session_id)\" --activate <BUNDLE_ID> >/dev/null 2>&1; exit 0",
+               "timeout": 10
              }
            ]
          }
@@ -78,8 +81,13 @@ instead of stacking.
 
    - Hook input arrives as JSON on stdin; commands run under `sh`, so they
      are POSIX (no `<<<`).
-   - The trailing `|| true` is deliberate: a broken ntf install must never
-     block or spam Claude Code with hook errors.
+   - The failure isolation is deliberate: a broken ntf install must never
+     block or spam Claude Code. `; exit 0` means the hook always succeeds
+     (never exit 2, which would block), `>/dev/null 2>&1` keeps broken
+     output out of the transcript, and `"timeout": 10` cuts a hung ntf off
+     well before the 60s default.
+   - `--sound` only on Notification (needs attention); Stop stays silent so
+     the per-response completion notification is not chatty.
    - The subtitle is the basename of the session's cwd, which tells the user
      *which* project is asking when several sessions run in parallel.
 
@@ -93,6 +101,8 @@ instead of stacking.
    ```
 
    A banner should have appeared; clicking it should focus the terminal.
+   To verify the failure isolation too, rerun with `<NTF>` replaced by a
+   nonexistent path and confirm the exit status is still 0.
 
 5. **Tell the user:** hook config is snapshotted at session start, so already
    running Claude Code sessions won't notify — new sessions will. Hooks can
