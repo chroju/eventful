@@ -184,8 +184,8 @@ printing when touching the click path.
 ## Skills
 
 `skills/eventful-setup/`, `skills/eventful-usage/`, and
-`skills/eventful-claude-code-hooks/` are user-facing Agent Skills shipped by
-this repo — the install/repair flow, the send-notification usage guide, and
-the Claude Code hooks wiring guide. Keep them in sync when CLI flags or the
-setup steps change. Skill directory names must match the frontmatter `name`
-(`gh skill publish --dry-run` validates this).
+`skills/eventful-agent-hooks/` are user-facing Agent Skills shipped by this
+repo — the install/repair flow, the send-notification usage guide, and the
+coding-agent (Claude Code / Gemini CLI / Codex) hooks wiring guide. Keep them
+in sync when CLI flags or the setup steps change. Skill directory names must
+match the frontmatter `name` (`gh skill publish --dry-run` validates this).
