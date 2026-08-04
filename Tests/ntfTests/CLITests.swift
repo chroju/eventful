@@ -31,6 +31,22 @@ struct CLITests {
         #expect(send.image == "/tmp/shot.png")
     }
 
+    @Test func runCapturesCommandAfterOptions() throws {
+        let run = try Run.parse(["--title", "t", "swift", "build", "--verbose"])
+        #expect(run.title == "t")
+        #expect(run.command == ["swift", "build", "--verbose"])
+    }
+
+    @Test func runCapturesCommandAfterTerminator() throws {
+        let run = try Run.parse(["--sound", "--", "make", "test"])
+        #expect(run.sound == true)
+        #expect(run.command == ["make", "test"])
+    }
+
+    @Test func runRequiresCommand() {
+        #expect(throws: (any Error).self) { try Run.parse([]) }
+    }
+
     @Test func removeRequiresGroupIDOrAll() {
         #expect(throws: (any Error).self) { try Remove.parse([]) }
         #expect(throws: (any Error).self) { try Remove.parse(["x", "--all"]) }

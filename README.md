@@ -55,6 +55,7 @@ ntf send --title <T> [--body <B>] [--subtitle <S>]
          [--open <URL>]           # click: open a URL
          [--execute <CMD>]        # click: run a command (see contract below)
          [--timeout <SEC>]        # execute timeout, default 30
+ntf run [options] -- <CMD...>     # run a command, notify when it finishes
 ntf remove <GROUP_ID> | ntf remove --all
 ntf list [--json]
 ntf setup                         # permission prompt + click-path verification
@@ -62,6 +63,25 @@ ntf doctor                        # diagnostics
 ```
 
 activate / open / execute can be combined; they run in that order.
+
+### `ntf run`
+
+Wraps a foreground command and posts a notification when it finishes, with
+success/failure and duration in the body (`✓ done · 12s` / `✗ exit 2 · 1m 03s`):
+
+```console
+$ ntf run swift build
+$ ntf run --sound --activate com.mitchellh.ghostty -- make test
+```
+
+- stdio is inherited (interactive commands work) and there is no timeout;
+  `ntf run` exits with the wrapped command's exit code.
+- The command is an argv array resolved via `/usr/bin/env` — no shell. For
+  shell-isms, wrap explicitly: `ntf run sh -c 'a && b'`.
+- All `send` options except `--body` pass through (the body is the status
+  line). `--title` defaults to the command name.
+- Bundle and permission are checked *before* the command runs, so a
+  misconfigured setup fails immediately instead of after a long build.
 
 ### `--image`
 

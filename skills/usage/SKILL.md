@@ -44,6 +44,22 @@ activate / open / execute can be combined; they run in that order.
 - Click actions expire after 24 hours; clicking an older notification
   silently does nothing.
 
+## Wrapping a command (`ntf run`)
+
+To be notified when a long-running command finishes, wrap it instead of
+chaining `ntf send` after it:
+
+```console
+$ ntf run swift build
+$ ntf run --sound --activate com.mitchellh.ghostty -- make test
+```
+
+The body reports status and duration (`✓ done · 12s` / `✗ exit 2 · 1m 03s`);
+`ntf run` exits with the wrapped command's exit code. The command is argv via
+`/usr/bin/env`, not a shell — use `ntf run sh -c '...'` for pipes or `&&`.
+All `send` options except `--body` pass through; `--title` defaults to the
+command name. Put ntf options before the command (or use `--`).
+
 ## Other commands
 
 ```console
