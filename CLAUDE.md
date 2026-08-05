@@ -202,7 +202,9 @@ verified with `ntf setup`, not tests.
 
 `RunnerTests` and `WrapTests` are `.serialized`: concurrent `Process` spawns
 hang indefinitely on GitHub Actions macOS runners under swift-testing's default
-parallelism (not reproducible locally).
+parallelism (not reproducible locally). `.serialized` is per-suite only — the
+two suites still run concurrently with each other, which reintroduces the hang
+across suites — so CI runs `swift test --no-parallel` on top of it.
 
 ## Debugging
 

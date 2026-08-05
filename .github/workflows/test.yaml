@@ -11,5 +11,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: swift build
-      - run: swift test
+      # --no-parallel: RunnerTests and WrapTests are each .serialized, but
+      # serialization is per-suite — the two suites still run concurrently
+      # with each other, and concurrent Process spawns hang indefinitely on
+      # GitHub Actions macOS runners (the suites pass in seconds with
+      # --no-parallel). Not reproducible locally.
+      - run: swift test --no-parallel
         timeout-minutes: 5
