@@ -9,7 +9,7 @@ jobs:
   test:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: swift build
       # --no-parallel: RunnerTests and WrapTests are each .serialized, but
       # serialization is per-suite — the two suites still run concurrently
