@@ -65,6 +65,34 @@ Constraints that are easy to break and hard to debug:
 - A plain symlink to the binary breaks `NSBundle` resolution. `build.sh`
   generates `build/ntf` as an exec wrapper for this reason.
 
+### `ntf send --wait` (synchronous mode)
+
+`Wait.swift`. The posting process stays alive, owns the UN delegate itself
+(no relaunch), and blocks in `NSApplication.run()` until the user interacts;
+the result goes to stdout as one line of JSON. `WaitTests.jsonShapeIsPinned`
+/ `exitCodesArePinned` pin the contract: click/button/reply → exit 0,
+dismiss → 2, timeout → 124 (default 300s, `--wait-timeout 0` = forever).
+No spool entry is written — the caller consumes the result, so `--wait`
+excludes `--activate`/`--open`/`--execute`.
+
+- Buttons/reply need a `UNNotificationCategory`. `setNotificationCategories`
+  replaces the whole set, so `registerCategory` unions with the existing set
+  (concurrent waiters), and the category id is a hash of the button config —
+  identical configs share one entry and the stored set stays bounded, with no
+  cleanup pass.
+- Dismiss events are only delivered because the category sets
+  `.customDismissAction`; without it the X button is invisible to the app.
+- A dead waiter's leftover notification is inert by construction: click mode
+  ignores non-default action ids, and the body click has no spool ref.
+  Keep it that way — a stale button press must never execute anything.
+- While a waiter lives it holds the notification-service connection, so
+  responses for OTHER eventful notifications land in its delegate too;
+  `WaitDelegate` routes those through `ResponseHandler.process` like click
+  mode would.
+- The timeout uses a wall-clock deadline (`asyncAfter(wallDeadline:)`) so it
+  keeps counting across system sleep; SIGINT/SIGTERM remove the notification
+  and exit 128+signal with no JSON.
+
 ### Spool (the click payload)
 
 `userInfo` is stored in plaintext in the OS notification store, so it carries
@@ -167,7 +195,8 @@ lags the developer's macOS). The real minimum is `LSMinimumSystemVersion` in
 Unit tests cover Spool (persistence, TTL, GC, permissions), Runner (exit codes,
 stderr tail, timeout kill, cwd), Wrap (exit code mirroring, signal mapping,
 duration, summary formatting), Attachment (staging copy, type/size/existence
-validation), and CLI parsing. Notification-facing paths
+validation), Wait (button parsing, response→outcome mapping, the pinned
+JSON/exit-code contract, category id derivation), and CLI parsing. Notification-facing paths
 (posting, click delivery) need a signed bundle and a human click, so they are
 verified with `ntf setup`, not tests.
 

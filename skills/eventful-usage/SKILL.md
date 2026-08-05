@@ -24,8 +24,30 @@ Options:
 - `--open <URL>` — clicking opens the URL.
 - `--execute <CMD>` — clicking runs the command. See the contract below.
 - `--timeout <SEC>` — timeout for `--execute` (default 30).
+- `--wait` — block until the user interacts, then print JSON. See below.
 
 activate / open / execute can be combined; they run in that order.
+
+## Waiting for an answer (`--wait`)
+
+To ask the user a question and consume the answer in a script or agent
+loop, use the synchronous mode:
+
+```console
+$ result=$(ntf send --wait --title "Deploy to prod?" --buttons "Approve,Deny")
+$ echo "$result"
+{"action":"button","button":"Approve","index":0}
+```
+
+- `--buttons "A,B"` adds action buttons; `--reply` adds a text-input field
+  (result: `{"action":"reply","text":"..."}`). Buttons appear on hover over
+  the banner and in Notification Center.
+- A plain body click prints `{"action":"clicked"}`.
+- Exit codes: 0 for click/button/reply, 2 for dismiss
+  (`{"action":"dismissed"}`), 124 for timeout (`{"action":"timeout"}`,
+  default 300s — override with `--wait-timeout <SEC>`, 0 waits forever).
+- `--wait` cannot be combined with `--activate`/`--open`/`--execute`; act
+  on the JSON result instead.
 
 ## The --execute contract (important)
 
