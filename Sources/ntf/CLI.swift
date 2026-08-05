@@ -55,7 +55,51 @@ struct Send: ParsableCommand {
     @Option(help: "Timeout in seconds for --execute.")
     var timeout: Int = 30
 
+    @Flag(help: """
+        Block until the user interacts with the notification (click, button, \
+        reply, or dismiss), then print the result as one line of JSON to \
+        stdout. Exit code: 0 on click/button/reply, 2 on dismiss, 124 on \
+        timeout.
+        """)
+    var wait = false
+
+    @Option(help: "Comma-separated action button labels (requires --wait).")
+    var buttons: String?
+
+    @Flag(help: "Add a text-input reply action (requires --wait).")
+    var reply = false
+
+    @Option(help: "Seconds to wait before giving up; 0 waits forever (requires --wait).")
+    var waitTimeout: Int = 300
+
+    func validate() throws {
+        if wait {
+            if activate != nil || open != nil || execute != nil {
+                throw ValidationError(
+                    "--wait cannot be combined with --activate/--open/--execute "
+                        + "(the caller consumes the result instead)")
+            }
+        } else {
+            if buttons != nil { throw ValidationError("--buttons requires --wait") }
+            if reply { throw ValidationError("--reply requires --wait") }
+        }
+        if waitTimeout < 0 { throw ValidationError("--wait-timeout must be >= 0") }
+        if let buttons {
+            do { _ = try Wait.parseButtons(buttons) } catch {
+                throw ValidationError("\(error)")
+            }
+        }
+    }
+
     func run() throws {
+        if wait {
+            try Wait.run(
+                Wait.Config(
+                    title: title, body: body, subtitle: subtitle, sound: sound,
+                    id: id, image: image,
+                    buttons: try buttons.map { try Wait.parseButtons($0) } ?? [],
+                    reply: reply, timeoutSec: waitTimeout))
+        }
         try Sender.send(
             title: title, body: body, subtitle: subtitle, sound: sound,
             id: id, activate: activate, open: open, execute: execute,

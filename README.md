@@ -55,6 +55,10 @@ ntf send --title <T> [--body <B>] [--subtitle <S>]
          [--open <URL>]           # click: open a URL
          [--execute <CMD>]        # click: run a command (see contract below)
          [--timeout <SEC>]        # execute timeout, default 30
+         [--wait]                 # block until interaction; print JSON result
+         [--buttons <A,B,..>]     # action buttons (requires --wait)
+         [--reply]                # text-input reply action (requires --wait)
+         [--wait-timeout <SEC>]   # --wait timeout, default 300; 0 = forever
 ntf run [options] -- <CMD...>     # run a command, notify when it finishes
 ntf remove <GROUP_ID> | ntf remove --all
 ntf list [--json]
@@ -82,6 +86,36 @@ $ ntf run --sound --activate com.mitchellh.ghostty -- make test
   line). `--title` defaults to the command name.
 - Bundle and permission are checked *before* the command runs, so a
   misconfigured setup fails immediately instead of after a long build.
+
+### Synchronous mode (`--wait`)
+
+Blocks until the user interacts with the notification, then prints the
+result as one line of JSON to stdout — a human-in-the-loop primitive for
+agents (e.g. answer an approval prompt from the notification banner):
+
+```console
+$ result=$(ntf send --wait --title "Deploy to prod?" --buttons "Approve,Deny")
+$ echo "$result"
+{"action":"button","button":"Approve","index":0}
+```
+
+| Interaction | stdout | exit code |
+|---|---|---|
+| body clicked | `{"action":"clicked"}` | 0 |
+| button pressed | `{"action":"button","button":"<label>","index":<n>}` | 0 |
+| reply sent (`--reply`) | `{"action":"reply","text":"<input>"}` | 0 |
+| dismissed (the X button) | `{"action":"dismissed"}` | 2 |
+| timeout (default 300s) | `{"action":"timeout"}` | 124 |
+
+- `--wait` excludes `--activate`/`--open`/`--execute`: the caller consumes
+  the result instead of the click running an action.
+- On timeout the notification is removed. Ctrl-C / SIGTERM also remove it
+  and exit with 128+signal, no JSON.
+- Buttons show on hover over the banner (under "Options" with a reply
+  action), and in Notification Center.
+- If the waiting process dies while the notification is still visible
+  (logout, `kill -9`), the leftover notification is inert: any interaction
+  with it silently does nothing.
 
 ### `--image`
 

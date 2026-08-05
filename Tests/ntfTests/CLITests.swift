@@ -47,6 +47,52 @@ struct CLITests {
         #expect(throws: (any Error).self) { try Run.parse([]) }
     }
 
+    @Test func sendParsesWaitOptions() throws {
+        let send = try Send.parse([
+            "--title", "t", "--wait", "--buttons", "yes,no", "--reply",
+            "--wait-timeout", "60",
+        ])
+        #expect(send.wait == true)
+        #expect(send.buttons == "yes,no")
+        #expect(send.reply == true)
+        #expect(send.waitTimeout == 60)
+    }
+
+    @Test func waitDefaultsTo300Seconds() throws {
+        let send = try Send.parse(["--title", "t", "--wait"])
+        #expect(send.waitTimeout == 300)
+    }
+
+    @Test func buttonsAndReplyRequireWait() {
+        #expect(throws: (any Error).self) {
+            try Send.parse(["--title", "t", "--buttons", "yes,no"])
+        }
+        #expect(throws: (any Error).self) {
+            try Send.parse(["--title", "t", "--reply"])
+        }
+    }
+
+    @Test func waitExcludesClickActions() {
+        #expect(throws: (any Error).self) {
+            try Send.parse(["--title", "t", "--wait", "--execute", "/usr/bin/true"])
+        }
+        #expect(throws: (any Error).self) {
+            try Send.parse(["--title", "t", "--wait", "--open", "https://example.com"])
+        }
+        #expect(throws: (any Error).self) {
+            try Send.parse(["--title", "t", "--wait", "--activate", "com.example.app"])
+        }
+    }
+
+    @Test func waitRejectsMalformedButtons() {
+        #expect(throws: (any Error).self) {
+            try Send.parse(["--title", "t", "--wait", "--buttons", "yes,,no"])
+        }
+        #expect(throws: (any Error).self) {
+            try Send.parse(["--title", "t", "--wait", "--wait-timeout", "-1"])
+        }
+    }
+
     @Test func removeRequiresGroupIDOrAll() {
         #expect(throws: (any Error).self) { try Remove.parse([]) }
         #expect(throws: (any Error).self) { try Remove.parse(["x", "--all"]) }
