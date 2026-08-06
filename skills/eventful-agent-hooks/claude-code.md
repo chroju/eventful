@@ -57,3 +57,93 @@ $ printf '%s' '{"session_id":"test","cwd":"/tmp","message":"hook test"}' | sh -c
 $ ntf list        # expect: claude-test  Claude Code  hook test
 $ ntf remove claude-test
 ```
+
+## Answering the approval from the notification (`PermissionRequest`)
+
+The hooks above only *tell* the user that Claude Code is waiting — the
+answer still has to be typed in the terminal. `PermissionRequest` closes
+that loop: it fires just before the approval prompt is shown and its JSON
+output decides the outcome, so `ntf send --wait --buttons` can put the
+answer on the notification itself.
+
+Use `PermissionRequest`, not `PreToolUse`. `PreToolUse` fires on *every*
+tool call — including ones already covered by `permissions.allow` — so it
+would post a notification for every `ls`. `PermissionRequest` fires only
+when an approval is actually needed.
+
+This hook blocks the agent while the notification is up, so it needs a
+script rather than a one-liner. Write it next to the notification hook and
+substitute `<NTF>`:
+
+```bash
+#!/bin/bash
+set -u
+NTF=<NTF>
+WAIT_SEC=240          # keep the settings.json timeout above this
+INPUT=$(jq -c '.' 2>/dev/null) || INPUT='{}'
+
+TOOL=$(printf '%s' "$INPUT" | jq -r '.tool_name // ""')
+
+# Tools whose prompt is not a yes/no question cannot be answered from a
+# notification. matcher has no negation, so filter here.
+case "$TOOL" in AskUserQuestion) exit 0 ;; esac
+
+SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // ""')
+DETAIL=$(printf '%s' "$INPUT" | jq -r '
+  (.tool_input // {}) | (.command // .file_path // .url // "") | tostring')
+BODY=$([ -n "$DETAIL" ] && echo "${TOOL}: ${DETAIL}" || echo "${TOOL:-approval needed}")
+
+RESULT=$("$NTF" send --title "Approve?" \
+  --subtitle "$(basename "$(printf '%s' "$INPUT" | jq -r '.cwd // "-"')")" \
+  --body "$BODY" --id "claude-approve-${SESSION_ID:-unknown}" --sound \
+  --buttons "Allow,Deny" --wait --wait-timeout "$WAIT_SEC" 2>/dev/null) || RESULT=""
+
+# Anything other than a button press (timeout, dismiss, body click, broken
+# ntf) returns no decision, and Claude Code falls back to the terminal
+# prompt. Never auto-allow.
+[ "$(printf '%s' "$RESULT" | jq -r '.action // ""')" = "button" ] || exit 0
+
+[ "$(printf '%s' "$RESULT" | jq -r '.index')" = "0" ] \
+  && DECISION='{"behavior":"allow"}' \
+  || DECISION='{"behavior":"deny","message":"Denied from the notification"}'
+
+jq -nc --argjson d "$DECISION" \
+  '{hookSpecificOutput:{hookEventName:"PermissionRequest",decision:$d}}'
+```
+
+Register it with a timeout longer than `WAIT_SEC`, or the hook is killed
+before the user can answer:
+
+```json
+{
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "hooks": [
+          { "type": "command", "command": "<SCRIPT>", "timeout": 300 }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Notes specific to this hook:
+
+- The body must say *what* is being approved (`Bash: git push origin main`),
+  otherwise the user is pressing Allow blind.
+- `permissions.deny` still blocks, and `permissions.ask` entries still
+  prompt, even when the hook answers `allow` — the hook cannot widen the
+  configured policy.
+- Buttons appear on hover over the banner and in Notification Center; the
+  notification has to be reachable for the whole `WAIT_SEC` window.
+
+Verification:
+
+```console
+$ printf '%s' '{"session_id":"t","cwd":"/tmp","tool_name":"Bash","tool_input":{"command":"git push"}}' | <SCRIPT>
+# press Allow  -> {"hookSpecificOutput":{...,"decision":{"behavior":"allow"}}}
+# press Deny   -> ...{"behavior":"deny",...}
+$ printf '%s' '{"tool_name":"AskUserQuestion"}' | <SCRIPT>   # no notification, no output
+$ printf '%s' '{"session_id":"t","cwd":"/tmp"}' | HOME=/nonexistent <SCRIPT>   # no output, exit 0
+```

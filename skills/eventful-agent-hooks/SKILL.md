@@ -10,8 +10,9 @@ Wire an agent's hook/notify mechanism to `ntf send` so the user gets a native
 macOS banner when the agent needs attention or finishes. Shared design first,
 then the per-agent wiring:
 
-- **Claude Code** — Notification + Stop hooks (stdin JSON):
-  see [claude-code.md](claude-code.md)
+- **Claude Code** — Notification + Stop hooks (stdin JSON), plus an optional
+  `PermissionRequest` hook that answers the approval from the notification
+  itself: see [claude-code.md](claude-code.md)
 - **Gemini CLI** — Notification + AfterAgent hooks (stdin JSON):
   see [gemini-cli.md](gemini-cli.md)
 - **Codex CLI** — `notify` program (JSON as final argv; turn-complete only):
